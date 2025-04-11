@@ -19,23 +19,18 @@
             $password = mysqli_real_escape_string($this->db->link, md5($data['password']));
         
             // Truy vấn kiểm tra username
-            $query = "SELECT * FROM tbl_taikhoan WHERE username = '$username' AND trangThai = 1 LIMIT 1"; 
-            $result = mysqli_query($this->db->link, $query);
+            $query = "SELECT * FROM tbl_taikhoan WHERE username = ? AND trangThai = 1 LIMIT 1";
+            $stmt = $this->db->link->prepare($query);
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
         
-            // Kiểm tra lỗi SQL
-            if (!$result) {
-                return "Lỗi truy vấn SQL: " . mysqli_error($this->db->link);
-            }
-        
-            // Kiểm tra nếu tài khoản không tồn tại
-            if (mysqli_num_rows($result) == 0) {
+            if ($result->num_rows == 0) {
                 return "Tên đăng nhập hoặc mật khẩu không đúng!";
             }
         
-            // Lấy thông tin tài khoản
-            $user = mysqli_fetch_assoc($result);
+            $user = $result->fetch_assoc();
         
-            // Kiểm tra mật khẩu
             if ($user['password'] !== $password) {
                 return "Tên đăng nhập hoặc mật khẩu không đúng!";
             }
@@ -45,7 +40,7 @@
             Session::set('customer_id', $user['id']);
             Session::set('customer_name', $user['username']);
         
-            return true; // Đăng nhập thành công
+            return true;
         }
         
         public function register($data) {
@@ -54,57 +49,71 @@
             $password = mysqli_real_escape_string($this->db->link, md5($data['password']));
         
             // Kiểm tra username đã tồn tại chưa
-            $checkQuery = "SELECT * FROM tbl_taikhoan WHERE username = '$username'";
-            $checkResult = mysqli_query($this->db->link, $checkQuery);
+            $checkQuery = "SELECT * FROM tbl_taikhoan WHERE username = ?";
+            $stmt = $this->db->link->prepare($checkQuery);
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $checkResult = $stmt->get_result();
             
-            if (mysqli_num_rows($checkResult) > 0) {
+            if ($checkResult->num_rows > 0) {
                 return "Tên Đăng Nhập Đã Tồn Tại";
             }
         
             // Thêm tài khoản vào bảng tbl_taikhoan
-            $query = "INSERT INTO tbl_taikhoan (username, password) VALUES ('$username', '$password')";
-            $result = mysqli_query($this->db->link, $query);
+            $query = "INSERT INTO tbl_taikhoan (username, password) VALUES (?, ?)";
+            $stmt = $this->db->link->prepare($query);
+            $stmt->bind_param("ss", $username, $password);
+            $stmt->execute();
         
-            if (!$result) {
-                return "Lỗi khi tạo tài khoản: " . mysqli_error($this->db->link);
+            if ($stmt->affected_rows <= 0) {
+                return "Lỗi khi tạo tài khoản: " . $stmt->error;
             }
         
             // Lấy ID của tài khoản vừa tạo
-            $account_id = mysqli_insert_id($this->db->link);
+            $account_id = $this->db->link->insert_id;
         
             // Thêm vào bảng tbl_khachhang
             $query_tblkhachhang = "INSERT INTO tbl_khachhang (id_taikhoan, tenKhachHang, diaChi, soDT, email) 
-            VALUES ('$account_id', '$hoten', '', '', '')";
-            $result_tblkhachhang = mysqli_query($this->db->link, $query_tblkhachhang);
+            VALUES (?, ?, '', '', '')";
+            $stmt = $this->db->link->prepare($query_tblkhachhang);
+            $stmt->bind_param("is", $account_id, $hoten);
+            $stmt->execute();
         
-            if (!$result_tblkhachhang) {
-                return "Lỗi khi thêm khách hàng: " . mysqli_error($this->db->link);
+            if ($stmt->affected_rows <= 0) {
+                return "Lỗi khi thêm khách hàng: " . $stmt->error;
             }
         
             // Thêm ảnh đại diện mặc định
             $hinhanh = 'admin/uploads/avt_user/avatar.png';
             $query_tblanhdaidien = "INSERT INTO tbl_anhdaidien (id_taikhoan, hinhAnh) 
-                                    VALUES ('$account_id', '$hinhanh')";
-            $result_tblanhdaidien = mysqli_query($this->db->link, $query_tblanhdaidien);
+                                    VALUES (?, ?)";
+            $stmt = $this->db->link->prepare($query_tblanhdaidien);
+            $stmt->bind_param("is", $account_id, $hinhanh);
+            $stmt->execute();
         
-            if (!$result_tblanhdaidien) {
-                return "Lỗi khi thêm ảnh đại diện: " . mysqli_error($this->db->link);
+            if ($stmt->affected_rows <= 0) {
+                return "Lỗi khi thêm ảnh đại diện: " . $stmt->error;
             }
         
-            // Thêm giỏ hàng cho khách hàng mới
-            $query_cart = "INSERT INTO tbl_giohang (maTaiKhoan) VALUES ('$account_id')";
-            $result_cart = mysqli_query($this->db->link, $query_cart);
+            // Thêm giỏ hàng cho khách hàng mới với giá trị `tongTien = 0`
+            $query_cart = "INSERT INTO tbl_giohang (maTaiKhoan, tongTien) VALUES (?, 0)";
+            $stmt = $this->db->link->prepare($query_cart);
+            $stmt->bind_param("i", $account_id);
+            $stmt->execute();
         
-            if (!$result_cart) {
-                return "Lỗi khi thêm giỏ hàng: " . mysqli_error($this->db->link);
+            if ($stmt->affected_rows <= 0) {
+                return "Lỗi khi thêm giỏ hàng: " . $stmt->error;
             }
         
             return true;
         }
         
         public function getinforcustomerbyid($id) {
-            $query = "SELECT * FROM tbl_khachhang WHERE id_taikhoan = $id";
-            $result = $this->db->select($query);
+            $query = "SELECT * FROM tbl_khachhang WHERE id_taikhoan = ?";
+            $stmt = $this->db->link->prepare($query);
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $result = $stmt->get_result();
             return $result;
         }
     }

@@ -16,9 +16,9 @@
         
         private function connectDB(){
             $this->link = new mysqli($this->host, $this->user, $this->pass, $this->dbname);
-            if(!$this->link){
-                $this->error ="Connection fail".$this->link->connect_error;
-                return false;
+            if (!$this->link) {
+                $this->error = "Connection failed: " . mysqli_connect_error();
+                die($this->error); // In lỗi ra để xem chi tiết
             }
         }
         
@@ -56,7 +56,7 @@
         
         // Delete
         public function delete($query){
-            $delete_row = $this->link->query($query) or 
+            $delete_row = $this->link->query($query) or
                 die($this->link->error.__LINE__);
             if($delete_row){
                 return $delete_row;

@@ -11,22 +11,22 @@
             $this->fm = new Format();
         }
 
-        public function get_id_customer($id_taikhoan) {
+        // public function get_id_customer($id_taikhoan) {
+        //     $id_taikhoan = mysqli_real_escape_string($this->db->link, $id_taikhoan);
+        
+        //     $query = "SELECT id_khachhang FROM tbl_khachhang WHERE id_taikhoan = '$id_taikhoan' LIMIT 1";
+        //     $result = $this->db->select($query);
+        
+        //     if ($result && $row = $result->fetch_assoc()) {
+        //         return (int)$row['id_khachhang'];
+        //     }
+        //     return 0;
+        // }
+
+        public function get_cart_id_by_account($id_taikhoan) {
             $id_taikhoan = mysqli_real_escape_string($this->db->link, $id_taikhoan);
         
-            $query = "SELECT id_khachhang FROM tbl_khachhang WHERE id_taikhoan = '$id_taikhoan' LIMIT 1";
-            $result = $this->db->select($query);
-        
-            if ($result && $row = $result->fetch_assoc()) {
-                return (int)$row['id_khachhang'];
-            }
-            return 0;
-        }
-
-        public function get_cart_id_by_customer($idKhachHang) {
-            $idKhachHang = mysqli_real_escape_string($this->db->link, $idKhachHang);
-        
-            $query = "SELECT magiohang FROM tbl_giohang WHERE maKhachHang = '$idKhachHang' LIMIT 1";
+            $query = "SELECT magiohang FROM tbl_giohang WHERE maTaiKhoan = '$id_taikhoan' LIMIT 1";
             $result = $this->db->select($query);
         
             if ($result && $row = $result->fetch_assoc()) {
@@ -41,7 +41,7 @@
             $quantity = mysqli_real_escape_string($this->db->link, $quantity);
         
             $id_giohang = $this->fm->validation($id_giohang);
-            $id_giohang = mysqli_real_escape_string($this->db->link, $id_giohang);
+            $id_giohang = mysqli_real_escape_strisng($this->db->link, $id_giohang);
             
             $id_sanpham = mysqli_real_escape_string($this->db->link, $id_sanpham);
         
@@ -70,14 +70,22 @@
             }
         }
         
-        public function show_cart(){
-            // $query = "SELECT * FROM tbl_giohang";
-            // return $result = $this->db->select($query);
+        public function show_cart($maGioHang) {
+            $query = "Select sp.maSanPham, sp.tenSanPham, sp.hinhAnh, ct.soLuong, ctsp.soluongTon, ctsp.giaban
+                        FROM tbl_sanpham AS sp 
+                        JOIN tbl_chitietgiohang AS ct ON sp.maSanPham = ct.maSanPham
+                        join tbl_chitietsanpham as ctsp on sp.maSanPham = ctsp.masanpham
+                        join tbl_giohang as gh on ct.maGioHang = gh.magiohang where gh.magiohang = '$maGioHang'";
+            return $this->db->select($query);
+        }
 
-            $query = "SELECT sp.tenSanPham, sp.hinhAnh, sp.giaBan, ct.soLuong 
-            FROM tbl_sanpham AS sp, tbl_chitietgiohang AS ct
-            WHERE sp.maSanPham = ct.maSanPham";
-            return $result = $this->db->select($query);
+        public function increment_quantity($id_giohang, $id_sanpham) {
+            $query = "UPDATE tbl_chitietgiohang SET soLuong = soLuong + 1 WHERE maGioHang = '$id_giohang' AND maSanPham = '$id_sanpham'";
+            return $this->db->update($query);
+        }
+        public function decrement_quantity($id_giohang, $id_sanpham) {
+            $query = "UPDATE tbl_chitietgiohang SET soLuong = soLuong - 1 WHERE maGioHang = '$id_giohang' AND maSanPham = '$id_sanpham'";
+            return $this->db->update($query);
         }
 
         public function get_quantity($maKhachHang) {
@@ -107,5 +115,11 @@
                 return 0;
             }
         }   
+        public function remove_from_cart($id_giohang, $id_sanpham) {
+            $id_giohang = mysqli_real_escape_string($this->db->link, $id_giohang);
+            $id_sanpham = mysqli_real_escape_string($this->db->link, $id_sanpham);
+            $query = "DELETE FROM tbl_chitietgiohang WHERE maGioHang = '$id_giohang' AND maSanPham = '$id_sanpham'";
+            return $this->db->delete($query);
+        }
     }
 ?>
